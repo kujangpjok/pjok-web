@@ -1,4 +1,4 @@
-import "./globals.css";
+import "./globals.css"; // sekarang valid karena filenya ada di /app
 
 export const metadata = {
   title: "Aplikasi PJOK",
@@ -9,7 +9,6 @@ export default function RootLayout({ children }) {
   return (
     <html lang="id">
       <head>
-        {/* setara status/nav bar terang di Android */}
         <meta name="theme-color" content="#ffffff" />
         <link rel="manifest" href="/manifest.webmanifest" />
       </head>
