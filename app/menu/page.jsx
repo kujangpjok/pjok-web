@@ -278,7 +278,6 @@ function TickerBar({ ticker }) {
   const durationPerChar = Math.max(10, Number(ticker.animationDurationPerCharMs || 40));
   const duration = Math.max(3000, text.length * durationPerChar);
 
-  // marquee ala Compose
   const scrollerRef = useRef(null);
   useEffect(() => {
     let alive = true;
@@ -287,28 +286,27 @@ function TickerBar({ ticker }) {
       const el = scrollerRef.current;
       while (alive && text && text !== defaultText) {
         el.scrollLeft = 0;
-        await wait(1500);
+        await wait(1200);
         await smoothScroll(el, el.scrollWidth, duration);
-        await wait(1500);
+        await wait(1200);
       }
     }
     loop();
     return () => { alive = false; };
   }, [text, duration]);
 
-  // duplikasi teks jika terlalu pendek
-  const displayText = text.length < 60 && text !== defaultText
+  const displayText = text.length < 40 && text !== defaultText
     ? `${text}                    ${text}`
     : text;
 
   return (
-    <div className="rounded-lg" style={{ backgroundColor: bg }}>
+    <div className="rounded-xl" style={{ backgroundColor: bg }}>
       <div
         ref={scrollerRef}
-        className="px-3 py-2 h-5 overflow-hidden whitespace-nowrap"
+        className="px-4 py-3 h-10 overflow-hidden whitespace-nowrap"
         style={{ color }}
       >
-        <span className="text-[13px] align-middle">{displayText}</span>
+        <span className="text-[15px] font-medium align-middle">{displayText}</span>
       </div>
     </div>
   );
