@@ -303,10 +303,10 @@ function TickerBar({ ticker }) {
   <div className="rounded-xl" style={{ backgroundColor: bg }}>
     <div
       ref={scrollerRef}
-      className="px-4 h-10 overflow-hidden whitespace-nowrap flex items-center"
+      className="px-4 h-12 overflow-hidden whitespace-nowrap flex items-center"
       style={{ color }}
     >
-      <span className="text-[15px] font-medium leading-none">{displayText}</span>
+      <span className="text-[16px] font-medium leading-none">{displayText}</span>
     </div>
   </div>
   );
