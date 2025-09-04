@@ -282,8 +282,8 @@ function TickerBar({ ticker }) {
   useEffect(() => {
     let alive = true;
     async function loop() {
-      if (!scrollerRef.current) return;
       const el = scrollerRef.current;
+      if (!el) return;
       while (alive && text && text !== defaultText) {
         el.scrollLeft = 0;
         await wait(1200);
