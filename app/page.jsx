@@ -1,13 +1,20 @@
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { hasIdentitas } from "../lib/identitas";
+import { hasIdentitas } from "../lib/identitas-repo";
 
 export default function Splash() {
   const router = useRouter();
   useEffect(() => {
-    const t = setTimeout(() => { hasIdentitas()? router.replace("/menu") : router.replace("/identitas"); }, 2000);
-    return () => clearTimeout(t);
+    let mounted = true;
+    const go = async () => {
+      await new Promise(r => setTimeout(r, 2000));
+      const ok = await hasIdentitas();
+      if (!mounted) return;
+      router.replace(ok ? "/menu" : "/identitas");
+    };
+    go();
+    return () => { mounted = false; };
   }, [router]);
 
   return (
