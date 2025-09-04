@@ -9,9 +9,10 @@ import {
   setIdentitasComplete,
 } from "../../lib/user-prefs";
 
-// Paksa CSR / non-prerender supaya aman
+// ⬇️ Biarkan dinamis (CSR) dan jangan cache
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const fetchCache = "force-no-store"; // optional penguat anti-cache
+// ❌ JANGAN ekspor `revalidate` di sini (itu yang bikin error)
 
 export default function IdentitasPage() {
   return (
@@ -57,6 +58,7 @@ function IdentitasInner() {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedOk, setLastSavedOk] = useState(true);
 
+  // Load data awal
   useEffect(() => {
     try {
       const cur = getIdentitas();
@@ -65,6 +67,7 @@ function IdentitasInner() {
     setInitialLoaded(true);
   }, []);
 
+  // Validasi
   const errs = useMemo(() => {
     const isDigitsOnly = (v) => v && /^[0-9]+$/.test(v);
     return {
@@ -91,6 +94,7 @@ function IdentitasInner() {
     errs.nipKepalaSekolah ||
     errs.nipPengawas;
 
+  // Auto-save debounce 800ms (setelah valid minimal)
   const debounceRef = useRef(null);
   useEffect(() => {
     if (!initialLoaded) return;
@@ -155,6 +159,7 @@ function IdentitasInner() {
       style={{ background: "linear-gradient(180deg,#B3E5FC 0%,#03A9F4 100%)" }}
     >
       <div className="max-w-xl mx-auto p-4">
+        {/* Logo */}
         <div className="flex justify-center pt-4">
           <Image src="/logo_pjok.png" alt="Logo PJOK" width={100} height={100} priority />
         </div>
@@ -163,6 +168,7 @@ function IdentitasInner() {
         <div className="text-center text-black font-bold text-xl">Isi Identitas Guru PJOK</div>
         <div className="h-4" />
 
+        {/* Kartu Form */}
         <div className="rounded-2xl bg-white p-4 shadow-sm">
           <Field
             label="Nama Sekolah"
@@ -260,7 +266,7 @@ function Field({ label, value, onChange, error = "", inputMode = "text" }) {
         onChange={(e) => onChange(e.target.value)}
         inputMode={inputMode}
       />
-      {error ? <div className="text-xs text-red-600 mt-1">{error}</div> : null}
+        {error ? <div className="text-xs text-red-600 mt-1">{error}</div> : null}
     </div>
   );
 }
