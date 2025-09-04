@@ -1,26 +1,66 @@
 "use client";
+
+import Image from "next/image";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { hasIdentitas } from "../lib/identitas-repo"; // pakai repo IndexedDB versi sebelumnya
-import { Routes } from "../lib/routes";
+import { hasIdentitas } from "../lib/identitas-repo"; // pakai repo IndexedDB kita
 
-export default function Splash(){
+export default function Splash() {
   const router = useRouter();
-  useEffect(()=>{
+
+  useEffect(() => {
     let alive = true;
-    (async ()=>{
-      await new Promise(r=>setTimeout(r, 2000));
+    (async () => {
+      // jeda splash 1200ms (sama seperti Android)
+      await new Promise((r) => setTimeout(r, 1200));
+
+      // cek kelengkapan identitas
       const ok = await hasIdentitas();
-      if(!alive) return;
-      router.replace(ok ? Routes.MENU : Routes.IDENTITAS);
+      if (!alive) return;
+
+      const target = ok ? "/menu" : "/identitas";
+      router.replace(target);
     })();
-    return ()=>{ alive = false; };
-  },[router]);
+    return () => {
+      alive = false;
+    };
+  }, [router]);
+
   return (
-    <div className="flex items-center justify-center h-[100dvh] bg-gradient-to-b from-blue-600 to-blue-100">
-      <div className="text-center">
-        <div className="text-2xl font-bold text-slate-900">Aplikasi PJOK</div>
-        <div className="text-sm text-slate-700 mt-2">Memuat…</div>
+    <div
+      className="h-[100dvh] w-full flex items-center justify-center"
+      style={{
+        background:
+          "linear-gradient(180deg, #B3E5FC 0%, #03A9F4 100%)" // sama seperti Brush.verticalGradient
+      }}
+    >
+      <div className="flex flex-col items-center">
+        {/* Logo */}
+        <div className="mb-6">
+          <Image
+            src="/logo_pjok.png"
+            alt="Logo PJOK"
+            width={180}
+            height={180}
+            priority
+            style={{ objectFit: "contain" }}
+          />
+        </div>
+
+        {/* Teks judul & subjudul */}
+        <h1 className="text-[28px] font-bold text-white leading-none">
+          Aplikasi PJOK
+        </h1>
+        <div className="text-[18px] font-semibold text-white">
+          FKKG PJOK Kota Banjar
+        </div>
+        <div className="text-[16px] font-medium text-white">2025</div>
+
+        {/* Spacer */}
+        <div className="h-10" />
+
+        {/* CircularProgressIndicator (versi CSS) */}
+        <div className="w-9 h-9 border-4 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     </div>
   );
