@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   getIdentitas,
@@ -9,19 +9,28 @@ import {
   setIdentitasComplete,
 } from "../../lib/user-prefs";
 
-/**
- * Bentuk data tersimpan (selaras dengan Android):
- * {
- *   namaSekolah: string,
- *   namaGuru: string,
- *   nipGuru: string,
- *   namaKepalaSekolah: string,
- *   nipKepalaSekolah: string,
- *   namaPengawas: string,
- *   nipPengawas: string,
- *   kotaSekolah: string
- * }
- */
+// Paksa CSR / non-prerender supaya aman
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default function IdentitasPage() {
+  return (
+    <Suspense fallback={<SkeletonIdentitas />}>
+      <IdentitasInner />
+    </Suspense>
+  );
+}
+
+function SkeletonIdentitas() {
+  return (
+    <div
+      className="min-h-[100dvh] grid place-items-center"
+      style={{ background: "linear-gradient(180deg,#B3E5FC 0%,#03A9F4 100%)" }}
+    >
+      <div className="text-white/90">Memuat…</div>
+    </div>
+  );
+}
 
 const INITIAL = {
   namaSekolah: "",
@@ -38,33 +47,24 @@ function onlyDigits(s) {
   return (s || "").split("").filter((c) => /[0-9]/.test(c)).join("");
 }
 
-export default function IdentitasPage() {
+function IdentitasInner() {
   const router = useRouter();
   const search = useSearchParams();
-  // optional: support next=? target setelah selesai (fallback ke /menu)
   const nextTarget = decodeURIComponent(search.get("next") || "/menu");
 
-  // ----- state form
   const [form, setForm] = useState(INITIAL);
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedOk, setLastSavedOk] = useState(true);
 
-  // load awal
   useEffect(() => {
     try {
       const cur = getIdentitas();
-      if (cur && typeof cur === "object") {
-        setForm({
-          ...INITIAL,
-          ...cur,
-        });
-      }
+      if (cur && typeof cur === "object") setForm({ ...INITIAL, ...cur });
     } catch {}
     setInitialLoaded(true);
   }, []);
 
-  // validation
   const errs = useMemo(() => {
     const isDigitsOnly = (v) => v && /^[0-9]+$/.test(v);
     return {
@@ -72,53 +72,46 @@ export default function IdentitasPage() {
       namaGuru: !form.namaGuru?.trim(),
       namaKepalaSekolah: !form.namaKepalaSekolah?.trim(),
       namaPengawas: !form.namaPengawas?.trim(),
-      nipGuru:
-        !!form.nipGuru?.trim() && !isDigitsOnly(form.nipGuru?.trim() || ""),
+      nipGuru: !!form.nipGuru?.trim() && !isDigitsOnly(form.nipGuru?.trim()),
       nipKepalaSekolah:
         !!form.nipKepalaSekolah?.trim() &&
-        !isDigitsOnly(form.nipKepalaSekolah?.trim() || ""),
+        !isDigitsOnly(form.nipKepalaSekolah?.trim()),
       nipPengawas:
         !!form.nipPengawas?.trim() &&
-        !isDigitsOnly(form.nipPengawas?.trim() || ""),
-      // kotaSekolah: !form.kotaSekolah?.trim(), // aktifkan kalau wajib
+        !isDigitsOnly(form.nipPengawas?.trim()),
     };
   }, [form]);
 
-  const hasHardError = useMemo(
-    () =>
-      errs.namaSekolah ||
-      errs.namaGuru ||
-      errs.namaKepalaSekolah ||
-      errs.namaPengawas ||
-      errs.nipGuru ||
-      errs.nipKepalaSekolah ||
-      errs.nipPengawas,
-    [errs]
-  );
+  const hasHardError =
+    errs.namaSekolah ||
+    errs.namaGuru ||
+    errs.namaKepalaSekolah ||
+    errs.namaPengawas ||
+    errs.nipGuru ||
+    errs.nipKepalaSekolah ||
+    errs.nipPengawas;
 
-  // auto-save debounce 800ms
   const debounceRef = useRef(null);
   useEffect(() => {
     if (!initialLoaded) return;
-    const payload = { ...form };
-    // valid minimal: field nama wajib & NIP (jika diisi) angka saja
+
     const okMinimal =
-      payload.namaSekolah?.trim() &&
-      payload.namaGuru?.trim() &&
-      payload.namaKepalaSekolah?.trim() &&
-      payload.namaPengawas?.trim() &&
+      form.namaSekolah?.trim() &&
+      form.namaGuru?.trim() &&
+      form.namaKepalaSekolah?.trim() &&
+      form.namaPengawas?.trim() &&
       !errs.nipGuru &&
       !errs.nipKepalaSekolah &&
       !errs.nipPengawas;
 
-    if (!okMinimal) return; // jangan auto-save saat belum valid minimal
+    if (!okMinimal) return;
 
     setIsSaving(true);
     setLastSavedOk(true);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       try {
-        saveIdentitas(payload);
+        saveIdentitas(form);
         setLastSavedOk(true);
       } catch (e) {
         console.error("Auto-save error:", e);
@@ -129,8 +122,7 @@ export default function IdentitasPage() {
     }, 800);
 
     return () => clearTimeout(debounceRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, initialLoaded]);
+  }, [form, initialLoaded, errs.nipGuru, errs.nipKepalaSekolah, errs.nipPengawas]);
 
   function update(key, val, enforceDigits = false) {
     setForm((prev) => ({
@@ -149,7 +141,6 @@ export default function IdentitasPage() {
       saveIdentitas(form);
       setIdentitasComplete(true);
       setIsSaving(false);
-      // setelah simpan sukses, navigasi
       router.replace(nextTarget || "/menu");
     } catch (e) {
       setIsSaving(false);
@@ -161,31 +152,17 @@ export default function IdentitasPage() {
   return (
     <div
       className="min-h-[100dvh]"
-      style={{
-        background: "linear-gradient(180deg,#B3E5FC 0%,#03A9F4 100%)",
-      }}
+      style={{ background: "linear-gradient(180deg,#B3E5FC 0%,#03A9F4 100%)" }}
     >
       <div className="max-w-xl mx-auto p-4">
-        {/* Logo */}
         <div className="flex justify-center pt-4">
-          <Image
-            src="/logo_pjok.png"
-            alt="Logo PJOK"
-            width={100}
-            height={100}
-            priority
-          />
+          <Image src="/logo_pjok.png" alt="Logo PJOK" width={100} height={100} priority />
         </div>
 
         <div className="h-3" />
-
-        <div className="text-center text-black font-bold text-xl">
-          Isi Identitas Guru PJOK
-        </div>
-
+        <div className="text-center text-black font-bold text-xl">Isi Identitas Guru PJOK</div>
         <div className="h-4" />
 
-        {/* Form Card */}
         <div className="rounded-2xl bg-white p-4 shadow-sm">
           <Field
             label="Nama Sekolah"
@@ -232,12 +209,10 @@ export default function IdentitasPage() {
             error={errs.nipPengawas ? "Hanya angka" : ""}
             inputMode="numeric"
           />
-          {/* Jika ingin mengaktifkan kota */}
           {/* <Field
             label="Kota Sekolah"
             value={form.kotaSekolah}
             onChange={(v) => update("kotaSekolah", v)}
-            error={errs.kotaSekolah ? "Wajib diisi" : ""}
           /> */}
 
           <div className="h-2" />
@@ -246,8 +221,6 @@ export default function IdentitasPage() {
           </div>
 
           <div className="h-3" />
-
-          {/* Status + tombol */}
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs text-slate-600">
               {isSaving
@@ -275,15 +248,7 @@ export default function IdentitasPage() {
   );
 }
 
-/* ============ Subcomponents ============ */
-
-function Field({
-  label,
-  value,
-  onChange,
-  error = "",
-  inputMode = "text",
-}) {
+function Field({ label, value, onChange, error = "", inputMode = "text" }) {
   return (
     <div className="mb-3">
       <label className="block text-sm font-medium mb-1">{label}</label>
@@ -295,9 +260,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         inputMode={inputMode}
       />
-      {error ? (
-        <div className="text-xs text-red-600 mt-1">{error}</div>
-      ) : null}
+      {error ? <div className="text-xs text-red-600 mt-1">{error}</div> : null}
     </div>
   );
 }
