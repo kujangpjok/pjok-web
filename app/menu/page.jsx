@@ -300,15 +300,15 @@ function TickerBar({ ticker }) {
     : text;
 
   return (
-    <div className="rounded-xl" style={{ backgroundColor: bg }}>
-      <div
-        ref={scrollerRef}
-        className="px-4 py-3 h-10 overflow-hidden whitespace-nowrap"
-        style={{ color }}
-      >
-        <span className="text-[15px] font-medium align-middle">{displayText}</span>
-      </div>
+  <div className="rounded-xl" style={{ backgroundColor: bg }}>
+    <div
+      ref={scrollerRef}
+      className="px-4 h-10 overflow-hidden whitespace-nowrap flex items-center"
+      style={{ color }}
+    >
+      <span className="text-[15px] font-medium leading-none">{displayText}</span>
     </div>
+  </div>
   );
 }
 
