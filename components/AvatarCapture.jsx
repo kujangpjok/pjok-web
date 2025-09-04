@@ -4,21 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { db } from "../lib/db";
 
-async function saveAvatarDataUrl(dataUrl) {
-  await db.files.put({ id: "avatar_self", dataUrl });
-}
-async function loadAvatarDataUrl() {
-  const row = await db.files.get("avatar_self");
-  return row?.dataUrl || null;
-}
+async function saveAvatarDataUrl(dataUrl) { await db.files.put({ id: "avatar_self", dataUrl }); }
+async function loadAvatarDataUrl() { const row = await db.files.get("avatar_self"); return row?.dataUrl || null; }
 
 export default function AvatarCapture({ size = 96 }) {
   const [dataUrl, setDataUrl] = useState(null);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    (async () => setDataUrl(await loadAvatarDataUrl()))();
-  }, []);
+  useEffect(() => { (async () => setDataUrl(await loadAvatarDataUrl()))(); }, []);
 
   return (
     <>
@@ -29,47 +22,62 @@ export default function AvatarCapture({ size = 96 }) {
         aria-label="Ambil/ubah foto profil"
       >
         {dataUrl ? (
-          // pakai <img> biasa agar aman untuk data URL besar
           <img src={dataUrl} alt="Foto Profil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
-          <Image
-            src="/ic_user.png" // siapkan ikon fallback di /public/ic_user.png
-            alt="User"
-            width={size}
-            height={size}
-          />
+          <Image src="/ic_user.png" alt="User" width={size} height={size} />
         )}
       </button>
 
-      {open && <CameraModal onClose={() => setOpen(false)} onShot={async (url) => {
-        await saveAvatarDataUrl(url);
-        setDataUrl(url);
-        setOpen(false);
-        alert("Foto profil diperbarui.");
-      }} />}
+      {open && (
+        <CameraModal
+          onClose={() => setOpen(false)}
+          onShot={async (url) => {
+            await saveAvatarDataUrl(url);
+            setDataUrl(url);
+            setOpen(false);
+            alert("Foto profil diperbarui.");
+          }}
+        />
+      )}
     </>
   );
 }
 
 function CameraModal({ onClose, onShot }) {
   const videoRef = useRef(null);
-  const [stream, setStream] = useState(null);
+  const streamRef = useRef(null);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: true });
-        setStream(s);
-        if (videoRef.current) videoRef.current.srcObject = s;
+        const s = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false
+        });
+        if (cancelled) {
+          // kalau sudah ditutup saat permission prompt
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = s;
+        if (videoRef.current) {
+          videoRef.current.srcObject = s;
+          await videoRef.current.play().catch(() => {});
+        }
       } catch {
         alert("Tidak bisa akses kamera.");
         onClose();
       }
     })();
     return () => {
-      if (stream) stream.getTracks().forEach((t) => t.stop());
+      cancelled = true;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
     };
-  }, [onClose, stream]);
+  }, [onClose]);
 
   function takePhoto() {
     const video = videoRef.current;
@@ -84,10 +92,17 @@ function CameraModal({ onClose, onShot }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-4 w-full max-w-sm">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]">
+      <div className="bg-white rounded-2xl p-4 w-full max-w-sm shadow-lg">
         <div className="text-sm font-semibold mb-2">Ambil Foto</div>
-        <video ref={videoRef} autoPlay playsInline className="w-full rounded border" />
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full rounded border"
+          style={{ background: "#000" }}
+        />
         <div className="flex gap-2 mt-3">
           <button onClick={takePhoto} className="px-3 py-2 rounded bg-blue-600 text-white">Ambil</button>
           <button onClick={onClose} className="px-3 py-2 rounded border">Batal</button>
